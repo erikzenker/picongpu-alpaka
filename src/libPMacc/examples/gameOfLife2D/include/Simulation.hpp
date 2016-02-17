@@ -39,6 +39,9 @@
 
 #include <string>
 #include "PngCreator.hpp"
+#include "IsaacConnector.hpp"
+
+#include <alpaka/alpaka.hpp>
 
 namespace gol
 {
@@ -47,14 +50,32 @@ class Simulation
 {
 private:
     /* math::CT::Int<16,16> is arbitrarily chosen SuperCellSize! */
-    typedef MappingDescription<DIM2, math::CT::Int< 16, 16 > > MappingDesc;
+    typedef MappingDescription<DIM2, math::CT::Int< superCellSize, superCellSize > > MappingDesc;
     typedef Evolution<MappingDesc> Evolutiontype;
 
     Space gridSize;
+    Space devices;
     /* holds rule mask derived from 23/3 input, \see Evolution.hpp */
     Evolutiontype evo;
     GatherSlice gather;
 
+    using Dim_Alpaka = PMacc::alpaka::Dim<3u>;
+    using Dim_Sim = PMacc::alpaka::Dim<3u>;
+    //using Host = PMacc::alpaka::Host<Dim_Alpaka>;
+    using Host = ::alpaka::acc::AccCpuSerial<Dim_Alpaka, size_t>;
+    //using Acc  = PMacc::alpaka::Acc<Dim_Alpaka>;
+    using Acc =  ::alpaka::acc::AccCpuOmp2Threads<Dim_Alpaka, size_t>;
+    //using Acc =  ::alpaka::acc::AccCpuSerial<Dim_Alpaka, size_t>;
+    using Stream = PMacc::alpaka::AccStream;
+
+    using IsaacConnector_t = IsaacConnector<
+        Host,
+        Acc,
+        Stream,
+        Dim_Alpaka,
+        Dim_Sim
+        >;
+    
     /* for storing black (dead) and white (alive) data for gol */
     Buffer* buff1; /* Buffer(\see types.h) for swapping between old and new world */
     Buffer* buff2; /* like evolve(buff2 &, const buff1) would work internally */
@@ -62,10 +83,13 @@ private:
 
     bool isMaster;
 
+    /* Isaac Visualization source*/
+    IsaacConnector_t * isaacConnector;
+
 public:
 
     Simulation(uint32_t rule, int32_t steps, Space gridSize, Space devices, Space periodic) :
-    evo(rule), steps(steps), gridSize(gridSize), isMaster(false), buff1(NULL), buff2(NULL)
+        evo(rule), steps(steps), gridSize(gridSize), devices(devices), isMaster(false), buff1(NULL), buff2(NULL), isaacConnector(NULL)
     {
         /* -First this initializes the GridController with number of 'devices'*
          *  and 'periodic'ity. The init-routine will then create and manage   *
@@ -93,6 +117,8 @@ public:
          *                      PluginConnector, nvidia::memory::MemoryInfo   */
         Environment<DIM2>::get().initGrids( gridSize, localGridSize,
                                             gc.getPosition() * localGridSize);
+
+        
     }
 
     virtual ~Simulation()
@@ -193,6 +219,50 @@ public:
          * white points. World will be written to buffer in first argument    */
         evo.initEvolution(buff1->getDeviceBuffer().getDataBox(), 0.1);
 
+
+        Environment<>::get().StreamController().addStreams(6);
+        
+        /* 
+         * Isaac visualization source
+         */
+        std::string server("localhost");
+        int port(2460);
+	std::vector<float> scaling{1,1,1};
+
+        GridController<DIM2> & gc = Environment<DIM2>::get().GridController();
+        Space localGridSize(gridSize / devices);
+
+        using Dim3 = PMacc::alpaka::Dim<3u>;
+        auto gridSizeDim3(::alpaka::Vec<Dim3, size_t>(
+                                                      static_cast<size_t>(gridSize[0]),
+                                                      static_cast<size_t>(gridSize[1]),
+                                                      static_cast<size_t>(10)));
+        auto localGridSizeDim3(::alpaka::Vec<Dim3, size_t>(
+                                                           static_cast<size_t>(localGridSize[0]),
+                                                           static_cast<size_t>(localGridSize[1]),
+                                                           static_cast<size_t>(10)));
+        auto positionDim3(::alpaka::Vec<Dim3, size_t>(
+                                                      static_cast<size_t>(gc.getPosition()[0]),
+                                                      static_cast<size_t>(gc.getPosition()[1]),
+                                                      static_cast<size_t>(0)));
+
+        
+        isaacConnector = new IsaacConnector_t(buff1->getDeviceBuffer().getDataBox().shift(Space(superCellSize, superCellSize)),
+                                              // Environment<DIM2>::get().DeviceManager().getHostDevice(),
+                                              // Environment<DIM2>::get().DeviceManager().getAccDevice(),
+                                              server,
+                                              port,
+                                              {size_t(1024),size_t(768)}, // framebuffer_size
+                                              //{size_t(320),size_t(240)}, // framebuffer_size
+                                              gridSizeDim3,
+                                              localGridSizeDim3,
+                                              positionDim3,
+                                              scaling
+                                              );
+
+        
+        isaacConnector->init();
+
     }
 
     void start()
@@ -225,13 +295,18 @@ private:
         /* Calculate Borders */
         evo.run<BORDER>( read->getDeviceBuffer().getDataBox(),
                          write->getDeviceBuffer().getDataBox() );
-        write->deviceToHost();
 
+        //write->deviceToHost();
+
+        __getTransactionEvent().waitForFinished();
+        
+        isaacConnector->draw(write->getDeviceBuffer().getDataBox().shift(Space(superCellSize, superCellSize)));
+        
         /* gather::operator() gathers all the buffers and assembles those to  *
          * a complete picture discarding the guards.                          */
-        PMACC_AUTO(picture, gather(write->getHostBuffer().getDataBox()));
-        PngCreator png;
-        if (isMaster) png(currentStep, picture, gridSize);
+        // PMACC_AUTO(picture, gather(write->getHostBuffer().getDataBox()));
+        // PngCreator png;
+        // if (isMaster) png(currentStep, picture, gridSize);
 
     }
 

@@ -32,8 +32,15 @@ namespace alpaka
     //! type for defining a extent of memory
     using MemSize = size_t;
     //! type for defining indices , e.g.  for kernel dimensions
-    using IdxSize = int;
+    using IdxSize = int;    
 
+    template<
+        typename T_Dim
+    >
+    using Host = ::alpaka::acc::AccCpuSerial<T_Dim,
+                                           IdxSize
+                                           >;
+    
     using HostDev = ::alpaka::dev::DevCpu;
 
 #if (defined(ALPAKA_ACC_GPU_CUDA_ENABLED) && defined(__CUDACC__))

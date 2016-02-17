@@ -165,6 +165,8 @@ public:
 protected:
 
     PMACC_ALIGN(pitch, size_t);
+public:
+    
     PMACC_ALIGN(fixedPointer, TYPE*);
 
 };

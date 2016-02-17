@@ -73,6 +73,18 @@ IF(PNGwriter_FOUND)
     LIST(APPEND _GOL_LIBRARIES_PRIVATE ${PNGwriter_LIBRARIES})
 ENDIF(PNGwriter_FOUND)
 
+
+#-------------------------------------------------------------------------------
+# Find Isaac
+#-------------------------------------------------------------------------------
+SET(isaac_DIR "/home/erik/projects/isaac")
+find_package(isaac 0.1.0)
+LIST(APPEND _GOL_DEFINITIONS_PRIVATE ${isaac_DEFINITIONS})
+LIST(APPEND _GOL_INCLUDE_DIRECTORIES_PRIVATE ${isaac_INCLUDE_DIRS})
+LIST(APPEND _GOL_LIBRARIES_PRIVATE ${isaac_LIBRARIES})
+
+
+
 #-------------------------------------------------------------------------------
 # VampirTrace
 #-------------------------------------------------------------------------------

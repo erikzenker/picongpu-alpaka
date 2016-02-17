@@ -33,6 +33,8 @@ namespace gol
     typedef GridController<DIM2> GC;
     typedef GridBuffer<uint8_t, DIM2 > Buffer;
 
+    constexpr int superCellSize = 4;
+    
     enum CommunicationTags
     {
         BUFF1 = 0u, BUFF2 = 1u

@@ -76,6 +76,49 @@ namespace PMacc
             }
         }
 
+
+        // template<
+        //     typename TDim,
+        //     typename TSize,
+        //     typename = typename std::enable_if<(TDim::value == DIM)>::type
+        // >
+        // HDINLINE operator ::alpaka::Vec<TDim, TSize> ()
+        // -> ::alpaka::Vec<TDim, TSize>
+        // {
+        //     ::alpaka::Vec<TDim, TSize> vec(::alpaka::Vec<TDim, TSize>::zeros());
+        //     for (uint32_t i = 0; i < DIM; ++i)
+        //     {
+        //         // alpaka vectors are z,y,x.
+        //         vec[i] = static_cast<TSize>((*this)[ DIM - 1u - i ])
+        //     }
+        //     return vec;
+        // }
+
+        HDINLINE auto toAlpakaVec()
+            -> ::alpaka::Vec<::alpaka::dim::DimInt<DIM>, size_t>
+        {
+            ::alpaka::Vec<::alpaka::dim::DimInt<DIM>, size_t> vec(::alpaka::Vec<::alpaka::dim::DimInt<DIM>, size_t>::zeros());
+            for (uint32_t i = 0; i < DIM; ++i)
+            {
+                // alpaka vectors are z,y,x.
+                vec[i] = static_cast<size_t>((*this)[ DIM - 1u - i ]);
+            }
+            return vec;
+        }
+
+        HDINLINE auto toAlpakaVec() const
+            -> ::alpaka::Vec<::alpaka::dim::DimInt<DIM>, size_t>
+        {
+            ::alpaka::Vec<::alpaka::dim::DimInt<DIM>, size_t> vec(::alpaka::Vec<::alpaka::dim::DimInt<DIM>, size_t>::zeros());
+            for (uint32_t i = 0; i < DIM; ++i)
+            {
+                // alpaka vectors are z,y,x.
+                vec[i] = static_cast<size_t>((*this)[ DIM - 1u - i ]);
+            }
+            return vec;
+        }
+        
+
         HDINLINE DataSpace(const DataSpace<DIM>& value) : BaseType(value)
         {
         }
