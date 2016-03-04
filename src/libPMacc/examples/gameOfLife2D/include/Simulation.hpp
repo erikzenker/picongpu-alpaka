@@ -236,11 +236,11 @@ public:
         auto gridSizeDim3(::alpaka::Vec<Dim3, size_t>(
                                                       static_cast<size_t>(gridSize[0]),
                                                       static_cast<size_t>(gridSize[1]),
-                                                      static_cast<size_t>(10)));
+                                                      static_cast<size_t>(1)));
         auto localGridSizeDim3(::alpaka::Vec<Dim3, size_t>(
                                                            static_cast<size_t>(localGridSize[0]),
                                                            static_cast<size_t>(localGridSize[1]),
-                                                           static_cast<size_t>(10)));
+                                                           static_cast<size_t>(1)));
         auto positionDim3(::alpaka::Vec<Dim3, size_t>(
                                                       static_cast<size_t>(gc.getPosition()[0]),
                                                       static_cast<size_t>(gc.getPosition()[1]),
@@ -259,8 +259,6 @@ public:
                                               positionDim3,
                                               scaling
                                               );
-
-        
         isaacConnector->init();
 
     }
